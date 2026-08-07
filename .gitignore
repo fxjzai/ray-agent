@@ -1,0 +1,10 @@
+# npm install 生成的依赖目录，可以随时重新安装。
+node_modules/
+
+# 本地环境变量里通常包含 API Key，绝对不能提交。
+.env
+.env.*
+!.env.example
+
+# macOS 自动生成的目录信息文件。
+.DS_Store
