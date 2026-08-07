@@ -17,15 +17,15 @@ import { getWeather, weatherTool } from "./tools/weather.js";
 const client = new OpenAI();
 
 // 模型名也放在 .env 中，方便读者切换自己的服务。
-// 如果没有配置 MODEL_NAME，就使用教程当前的默认模型。
-const model = process.env.MODEL_NAME || "gpt-5.5";
+// 如果没有配置 MODEL_NAME，就使用第 2 课文章中的默认模型。
+const model = process.env.MODEL_NAME || "deepseek-v4-flash";
 
-// tools 数组会随请求一起发送给模型。
-// 模型只能看到工具名称、描述和参数结构，看不到 getWeather 的实现代码。
+// tools 数组会随每一次模型请求发送出去。
+// 模型只能看到工具说明，看不到 getWeather 的内部实现。
 const tools = [weatherTool];
 
-// context 是本次对话的完整历史。
-// 它定义在循环外面，所以每次提问后都不会被重新清空。
+// context 保存整个对话期间的完整历史。
+// 外层用户消息和内层工具调用产生的 Item 都会进入这个数组。
 const context = [];
 
 // 创建终端输入输出接口。
@@ -35,7 +35,7 @@ const rl = readline.createInterface({
 });
 
 // 根据模型返回的工具名称，找到本地真正需要执行的函数。
-// 当前只有一个工具，所以先使用最直观的 if；后面的课程再优化工具注册方式。
+// 当前只有一个工具，所以继续保留最直观的 if；后面的课程再做 Tool Registry。
 async function callFunction(name, args) {
     if (name === "get_weather") {
         return getWeather(args);
@@ -44,78 +44,85 @@ async function callFunction(name, args) {
     throw new Error(`未知工具：${name}`);
 }
 
-// 向模型发送一条用户消息，并返回模型最终生成的文字。
-async function getAssistantReply(userInput) {
-    // 先把用户本轮输入加入历史记录。
+// 执行模型返回的一次 Tool Call，并组装成 Responses API 要求的 Tool Result。
+async function executeToolCall(toolCall) {
+    try {
+        // arguments 是模型生成的 JSON 字符串，需要先解析成 JavaScript 对象。
+        const args = JSON.parse(toolCall.arguments);
+
+        // 模型只负责提出调用请求，真正的函数由我们的应用在本地执行。
+        const result = await callFunction(toolCall.name, args);
+
+        // call_id 用来告诉模型：这个结果属于刚才的哪一次工具调用。
+        return {
+            type: "function_call_output",
+            call_id: toolCall.call_id,
+            output: JSON.stringify(result),
+        };
+    } catch (error) {
+        // 单个工具失败不一定要终止整个 Agent。
+        // 把错误作为结构化结果回传，模型可以重试、换参数或向用户解释。
+        return {
+            type: "function_call_output",
+            call_id: toolCall.call_id,
+            output: JSON.stringify({
+                error: error instanceof Error ? error.message : String(error),
+            }),
+        };
+    }
+}
+
+// 内层 Agent Loop：反复执行“模型 → 工具 → 模型”，直到得到最终回答。
+async function runAgent(userInput, maxTurns = 8) {
+    // 当前用户消息加入共享 context。
+    // 因为 context 定义在函数外，所以前面的多轮对话也仍然保留着。
     context.push({
         role: "user",
         content: userInput,
     });
 
-    // 第一次请求：让模型阅读用户问题，并决定是否需要调用天气工具。
-    let response = await client.responses.create({
-        model,
-        instructions: "你是天气助手。用户询问天气时，使用 get_weather 工具。",
-        tools,
-        input: context,
-    });
+    // 一次用户任务最多调用模型 maxTurns 次，防止异常情况下无限循环。
+    for (let turn = 1; turn <= maxTurns; turn++) {
+        const response = await client.responses.create({
+            model,
+            instructions: "你是天气助手，需要时可以调用天气工具。",
+            tools,
+            input: context,
+        });
 
-    // 先保存模型的完整输出。
-    // 如果模型请求调用工具，function_call Item 也必须留在 context 中。
-    context.push(...response.output);
+        // 必须保存这一轮的完整 output。
+        // 其中可能同时包含 reasoning、message 和 function_call 等 Item。
+        context.push(...response.output);
 
-    // 第 1 课只处理一次工具调用，所以先用 find 取出第一个 function_call。
-    // 这也是本课故意留下的限制：下一课会改成收集全部工具调用并循环处理。
-    const toolCall = response.output.find(
-        (item) => item.type === "function_call"
-    );
+        // find 只能得到第一个调用；filter 才能收集模型这一轮的全部调用。
+        const toolCalls = response.output.filter(
+            (item) => item.type === "function_call"
+        );
 
-    // 如果模型没有调用工具，就直接返回它生成的文字。
-    if (!toolCall) {
-        return response.output_text;
+        // 没有 Tool Call，说明模型已经生成最终自然语言回答，内层循环结束。
+        if (toolCalls.length === 0) {
+            return response.output_text;
+        }
+
+        // 当前只有只读天气查询，多个调用彼此没有依赖，也不会修改外部状态，
+        // 因此可以使用 Promise.all 并行执行。写文件和 Bash 不能直接照搬此策略。
+        const toolOutputs = await Promise.all(
+            toolCalls.map(executeToolCall)
+        );
+
+        // 工具结果进入 context 后，下一轮模型才能观察结果并继续决策。
+        context.push(...toolOutputs);
     }
 
-    // arguments 是 JSON 字符串，需要先解析成 JavaScript 对象。
-    const args = JSON.parse(toolCall.arguments);
-
-    // 模型只负责提出调用请求，真正的函数由我们的应用在本地执行。
-    let result;
-    try {
-        result = await callFunction(toolCall.name, args);
-    } catch (error) {
-        // 工具错误也转换成结果交给模型，让模型决定如何向用户解释。
-        result = {
-            error: error instanceof Error ? error.message : String(error),
-        };
-    }
-
-    // call_id 用来告诉模型：这个结果属于刚才的哪一次工具调用。
-    context.push({
-        type: "function_call_output",
-        call_id: toolCall.call_id,
-        output: JSON.stringify(result),
-    });
-
-    // 第二次请求：模型看完天气结果后，再组织面向用户的自然语言回答。
-    response = await client.responses.create({
-        model,
-        instructions: "根据天气工具返回的数据，简洁地回答用户。",
-        tools,
-        input: context,
-    });
-
-    // 最终回答也加入历史，这样下一轮对话仍然知道前面发生过什么。
-    context.push(...response.output);
-
-    return response.output_text;
+    // 到达这里说明模型连续多轮都没有结束任务，主动停止以保护时间和费用预算。
+    throw new Error(`Agent 超过最大执行轮数：${maxTurns}`);
 }
 
-// 这是最外层的对话循环。
-// 一次循环处理一条用户消息，完成后再等待下一条消息。
+// 外层对话循环：一次处理一条用户消息，任务完成后再等待下一条消息。
 while (true) {
     const userInput = (await rl.question("你: ")).trim();
 
-    // 提供几种常见的退出方式，避免只能用 Ctrl+C 强制结束程序。
+    // 提供几种常见退出方式，避免只能用 Ctrl+C 强制结束程序。
     if (["退出", "exit", "quit"].includes(userInput.toLowerCase())) {
         break;
     }
@@ -126,14 +133,15 @@ while (true) {
     }
 
     try {
-        const answer = await getAssistantReply(userInput);
+        // runAgent 内部可能调用零次、一次或多次工具，外层只等待最终答案。
+        const answer = await runAgent(userInput);
         console.log(`AI: ${answer}\n`);
     } catch (error) {
-        // 网络错误、鉴权错误和模型错误都会在这里显示。
+        // 模型请求失败或达到最大轮数时，在这里统一显示错误。
         const message = error instanceof Error ? error.message : String(error);
-        console.error(`请求失败：${message}\n`);
+        console.error(`运行失败：${message}\n`);
     }
 }
 
-// 退出循环后关闭 readline，让 Node.js 进程正常结束。
+// 退出外层循环后关闭 readline，让 Node.js 进程正常结束。
 rl.close();
