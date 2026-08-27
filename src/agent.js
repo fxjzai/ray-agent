@@ -9,20 +9,26 @@ import OpenAI from "openai";
 // readline/promises 用来在终端中等待用户输入。
 // promises 版本可以配合 await 使用，比回调形式更容易阅读。
 import readline from "node:readline/promises";
+import path from "node:path";
 
-// weatherTool 是给模型看的工具说明，getWeather 是本地真正执行的函数。
-import { getWeather, weatherTool } from "./tools/weather.js";
+import { bashTool, runBash } from "./tools/bash.js";
+import { editTextFile, editTool } from "./tools/edit.js";
+import { readTextFile, readTool } from "./tools/read.js";
+import { writeTextFile, writeTool } from "./tools/write.js";
 
 // SDK 会自动读取 OPENAI_API_KEY 和 OPENAI_BASE_URL。
 const client = new OpenAI();
 
 // 模型名也放在 .env 中，方便读者切换自己的服务。
-// 如果没有配置 MODEL_NAME，就使用第 2 课文章中的默认模型。
+// 如果没有配置 MODEL_NAME，就使用 DeepSeek Responses API 当前支持的模型。
 const model = process.env.MODEL_NAME || "deepseek-v4-flash";
 
-// tools 数组会随每一次模型请求发送出去。
-// 模型只能看到工具说明，看不到 getWeather 的内部实现。
-const tools = [weatherTool];
+// 第一个命令行参数可以指定 Agent 操作的工作区，默认使用启动命令所在目录。
+const workspaceRoot = path.resolve(process.argv[2] || process.cwd());
+
+// 四个基础工具构成最小 Coding Agent 的动作空间。
+// 模型只能看到这些说明，看不到本地函数的内部实现。
+const tools = [readTool, writeTool, editTool, bashTool];
 
 // context 保存整个对话期间的完整历史。
 // 外层用户消息和内层工具调用产生的 Item 都会进入这个数组。
@@ -34,14 +40,38 @@ const rl = readline.createInterface({
     output: process.stdout,
 });
 
-// 根据模型返回的工具名称，找到本地真正需要执行的函数。
-// 当前只有一个工具，所以继续保留最直观的 if；后面的课程再做 Tool Registry。
+// 这里故意保留显式路由，下一课再解决工具增多后的注册和统一管理问题。
 async function callFunction(name, args) {
-    if (name === "get_weather") {
-        return getWeather(args);
+    switch (name) {
+        case "read":
+            return readTextFile(args, workspaceRoot);
+        case "write":
+            return writeTextFile(args, workspaceRoot);
+        case "edit":
+            return editTextFile(args, workspaceRoot);
+        case "bash":
+            return runBash(args, workspaceRoot);
+        default:
+            throw new Error(`未知工具：${name}`);
     }
+}
 
-    throw new Error(`未知工具：${name}`);
+function describeToolCall(name, args) {
+    if (name === "bash") {
+        const command = String(args.command ?? "").replaceAll(/\s+/g, " ").slice(0, 120);
+        return command.length === 120 ? `${command}…` : command;
+    }
+    return String(args.path ?? "");
+}
+
+function describeToolResult(name, result) {
+    if (name === "bash") {
+        return result.timedOut ? "超时" : `exitCode=${result.exitCode}`;
+    }
+    if (name === "read") {
+        return `${result.lineCount} 行${result.nextOffset ? `，下一段 offset=${result.nextOffset}` : ""}`;
+    }
+    return result.message || "完成";
 }
 
 // 执行模型返回的一次 Tool Call，并组装成 Responses API 要求的 Tool Result。
@@ -49,9 +79,11 @@ async function executeToolCall(toolCall) {
     try {
         // arguments 是模型生成的 JSON 字符串，需要先解析成 JavaScript 对象。
         const args = JSON.parse(toolCall.arguments);
+        console.log(`→ ${toolCall.name}  ${describeToolCall(toolCall.name, args)}`);
 
         // 模型只负责提出调用请求，真正的函数由我们的应用在本地执行。
         const result = await callFunction(toolCall.name, args);
+        console.log(`← ${toolCall.name}  ${describeToolResult(toolCall.name, result)}`);
 
         // call_id 用来告诉模型：这个结果属于刚才的哪一次工具调用。
         return {
@@ -62,11 +94,13 @@ async function executeToolCall(toolCall) {
     } catch (error) {
         // 单个工具失败不一定要终止整个 Agent。
         // 把错误作为结构化结果回传，模型可以重试、换参数或向用户解释。
+        const message = error instanceof Error ? error.message : String(error);
+        console.log(`← ${toolCall.name}  失败：${message}`);
         return {
             type: "function_call_output",
             call_id: toolCall.call_id,
             output: JSON.stringify({
-                error: error instanceof Error ? error.message : String(error),
+                error: message,
             }),
         };
     }
@@ -85,7 +119,11 @@ async function runAgent(userInput, maxTurns = 8) {
     for (let turn = 1; turn <= maxTurns; turn++) {
         const response = await client.responses.create({
             model,
-            instructions: "你是天气助手，需要时可以调用天气工具。",
+            instructions: [
+                "你是 Coding Agent，可以读取、创建、精确修改文件，并运行命令验证结果。",
+                `当前工作区是 ${workspaceRoot}。文件工具只能访问该目录；bash 的 cwd 虽固定在这里，但它不是安全沙箱。`,
+                "修改代码前先读取相关文件，修改后尽量运行测试或检查命令，并根据真实结果回答。",
+            ].join("\n"),
             tools,
             input: context,
         });
@@ -104,11 +142,12 @@ async function runAgent(userInput, maxTurns = 8) {
             return response.output_text;
         }
 
-        // 当前只有只读天气查询，多个调用彼此没有依赖，也不会修改外部状态，
-        // 因此可以使用 Promise.all 并行执行。写文件和 Bash 不能直接照搬此策略。
-        const toolOutputs = await Promise.all(
-            toolCalls.map(executeToolCall)
-        );
+        // 写文件和 Bash 可能依赖前一个调用的副作用，本课先统一串行执行。
+        // 下一课再通过工具元数据决定哪些只读调用可以安全并行。
+        const toolOutputs = [];
+        for (const toolCall of toolCalls) {
+            toolOutputs.push(await executeToolCall(toolCall));
+        }
 
         // 工具结果进入 context 后，下一轮模型才能观察结果并继续决策。
         context.push(...toolOutputs);
@@ -119,6 +158,8 @@ async function runAgent(userInput, maxTurns = 8) {
 }
 
 // 外层对话循环：一次处理一条用户消息，任务完成后再等待下一条消息。
+console.log(`工作区：${workspaceRoot}\n`);
+
 while (true) {
     const userInput = (await rl.question("你: ")).trim();
 
