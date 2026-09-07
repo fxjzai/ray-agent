@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
+import { realpathSync } from "node:fs";
 import path from "node:path";
 import { resolveWorkspacePath } from "./common.js";
 
@@ -27,7 +28,7 @@ export async function writeTextFile({ path: requestedPath, content }, workspaceR
     await writeFile(filePath, content, "utf8");
 
     return {
-        path: path.relative(path.resolve(workspaceRoot), filePath),
+        path: path.relative(realpathSync(path.resolve(workspaceRoot)), filePath),
         bytesWritten: Buffer.byteLength(content, "utf8"),
         message: "文件写入完成",
     };

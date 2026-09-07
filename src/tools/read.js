@@ -1,4 +1,5 @@
 import { readFile, stat } from "node:fs/promises";
+import { realpathSync } from "node:fs";
 import path from "node:path";
 import { MAX_TOOL_OUTPUT_CHARS, resolveWorkspacePath } from "./common.js";
 
@@ -78,7 +79,7 @@ export async function readTextFile({ path: requestedPath, offset = 1, limit = DE
     const nextOffset = offset - 1 + readCount < totalLines ? offset + readCount : null;
 
     return {
-        path: path.relative(path.resolve(workspaceRoot), filePath) || ".",
+        path: path.relative(realpathSync(path.resolve(workspaceRoot)), filePath) || ".",
         offset,
         lineCount: readCount,
         totalLines,

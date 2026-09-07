@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "start": "node src/agent.js",
-    "check": "node --check src/agent.js && node --check src/tools/weather.js"
+    "check": "node --check src/agent.js && node --check src/runtime/agent-loop.js && node --check src/runtime/tool-registry.js && node --check src/runtime/tool-executor.js && node --check src/runtime/approval.js && node --check src/runtime/coding-tools.js",
+    "test": "node --test test/*.test.js",
+    "demo:04": "node scripts/demo-lesson-04.js"
   },
   "dependencies": {
+    "ajv": "^8.20.0",
     "dotenv": "^17.4.2",
     "openai": "^6.45.0"
   }

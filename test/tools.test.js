@@ -76,6 +76,14 @@ test("write 创建父目录并报告 UTF-8 字节数", async () => {
     assert.equal(result.bytesWritten, 6);
 });
 
+test("工作区根目录是符号链接时，read/write/edit 仍返回正确相对路径", async () => {
+    await symlink(workspace, path.join(workspace, "root-alias"));
+    const alias = path.join(workspace, "root-alias");
+    assert.equal((await writeTextFile({ path: "alias.txt", content: "old" }, alias)).path, "alias.txt");
+    assert.equal((await readTextFile({ path: "alias.txt" }, alias)).path, "alias.txt");
+    assert.equal((await editTextFile({ path: "alias.txt", oldText: "old", newText: "new" }, alias)).path, "alias.txt");
+});
+
 test("edit 只替换唯一匹配项", async () => {
     await writeFile(path.join(workspace, "demo.js"), "const answer = 41;\n");
     await editTextFile({ path: "demo.js", oldText: "41", newText: "42" }, workspace);

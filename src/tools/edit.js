@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
+import { realpathSync } from "node:fs";
 import path from "node:path";
 import { resolveWorkspacePath } from "./common.js";
 
@@ -49,7 +50,7 @@ export async function editTextFile({ path: requestedPath, oldText, newText }, wo
     await writeFile(filePath, updated, "utf8");
 
     return {
-        path: path.relative(path.resolve(workspaceRoot), filePath),
+        path: path.relative(realpathSync(path.resolve(workspaceRoot)), filePath),
         bytesWritten: Buffer.byteLength(updated, "utf8"),
         message: "已替换唯一匹配项",
     };
