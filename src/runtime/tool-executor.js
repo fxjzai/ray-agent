@@ -4,14 +4,25 @@ const failure = (code, message) => ({ error: { code, message } });
 const errorMessage = (error) => error instanceof Error ? error.message : String(error);
 
 export function createToolExecutor({ registry, workspaceRoot, beforeToolCall, afterToolCall, onHookError }) {
-    async function executeToolCall(toolCall) {
+    async function executeToolCall(toolCall, { signal, shouldSkip, onToolEvent } = {}) {
         const startedAt = performance.now();
         const tool = registry.get(toolCall.name);
         let args;
         let result;
+        let skipped = false;
+        const emit = (type, data = {}) => {
+            try { onToolEvent?.(structuredClone({ type, call_id: toolCall.call_id, name: toolCall.name, ...data })); } catch { /* 观察者不改变执行 */ }
+        };
+        function checkBoundary() {
+            const code = signal?.aborted ? "CANCELLED" : shouldSkip?.() ? "STEERING_SKIPPED" : undefined;
+            if (code) { skipped = true; result = failure(code, "调用未启动"); }
+            return Boolean(code);
+        }
 
         // 校验与审批都在执行函数之前；所有失败也走统一的结果和审计出口。
-        if (!tool) {
+        if (checkBoundary()) {
+            // 每个已声明的调用仍走统一结果出口。
+        } else if (!tool) {
             result = failure("UNKNOWN_TOOL", `未知工具：${toolCall.name}`);
         } else {
             try {
@@ -27,21 +38,23 @@ export function createToolExecutor({ registry, workspaceRoot, beforeToolCall, af
 
             if (!result) {
                 try {
-                    const decision = await beforeToolCall?.({ toolCall, args, tool, workspaceRoot });
-                    if (decision?.allow === false || (tool.requiresApproval && decision?.allow !== true)) {
+                    const decision = await beforeToolCall?.({ toolCall, args, tool, workspaceRoot, signal });
+                    if (!checkBoundary() && (decision?.allow === false || (tool.requiresApproval && decision?.allow !== true))) {
                         result = failure("TOOL_DENIED", decision?.reason || "工具调用未获批准");
                     }
                 } catch (error) {
                     // 审批模块故障时不执行，避免把故障误当作授权。
-                    result = failure("TOOL_DENIED", `执行前检查失败：${errorMessage(error)}`);
+                    if (!checkBoundary()) result = failure("TOOL_DENIED", `执行前检查失败：${errorMessage(error)}`);
                 }
             }
 
             if (!result) {
                 try {
-                    result = await tool.execute(args, workspaceRoot);
+                    emit("tool_start", { args });
+                    // 同步观察者也可能请求取消；尚未启动时仍可阻止。
+                    if (!checkBoundary()) result = await tool.execute(args, workspaceRoot, { signal });
                 } catch (error) {
-                    result = failure("TOOL_EXECUTION_FAILED", errorMessage(error));
+                    result = failure(signal?.aborted ? "CANCELLED" : "TOOL_EXECUTION_FAILED", errorMessage(error));
                 }
             }
         }
@@ -68,19 +81,20 @@ export function createToolExecutor({ registry, workspaceRoot, beforeToolCall, af
             }
         }
 
+        emit(skipped ? "tool_skipped" : "tool_end", { result: JSON.parse(output), durationMs: performance.now() - startedAt });
         return { type: "function_call_output", call_id: toolCall.call_id, output };
     }
 
-    async function executeToolCalls(toolCalls) {
+    async function executeToolCalls(toolCalls, context = {}) {
         // 只有整批调用都显式允许并行，且不涉及交互审批，才同时启动。
         const canParallel = toolCalls.every((call) => {
             const tool = registry.get(call.name);
             return tool?.executionMode === "parallel" && tool.requiresApproval === false;
         });
-        if (canParallel) return Promise.all(toolCalls.map(executeToolCall));
+        if (canParallel) return Promise.all(toolCalls.map((call) => executeToolCall(call, context)));
 
         const outputs = [];
-        for (const call of toolCalls) outputs.push(await executeToolCall(call));
+        for (const call of toolCalls) outputs.push(await executeToolCall(call, context));
         return outputs;
     }
 

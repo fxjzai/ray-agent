@@ -20,7 +20,7 @@ export const bashTool = {
     },
 };
 
-export async function runBash({ command, timeout = DEFAULT_TIMEOUT_MS }, workspaceRoot) {
+export async function runBash({ command, timeout = DEFAULT_TIMEOUT_MS }, workspaceRoot, { signal: abortSignal } = {}) {
     if (typeof command !== "string" || command.trim() === "") {
         throw new Error("command 必须是非空字符串");
     }
@@ -29,6 +29,7 @@ export async function runBash({ command, timeout = DEFAULT_TIMEOUT_MS }, workspa
     }
 
     const cwd = path.resolve(workspaceRoot);
+    abortSignal?.throwIfAborted();
 
     return new Promise((resolve, reject) => {
         const child = spawn(command, {
@@ -42,6 +43,8 @@ export async function runBash({ command, timeout = DEFAULT_TIMEOUT_MS }, workspa
         let stdoutTruncated = false;
         let stderrTruncated = false;
         let timedOut = false;
+        let cancelled = false;
+        let closed = false;
 
         function collect(current, chunk) {
             const remaining = MAX_TOOL_OUTPUT_CHARS - current.length;
@@ -64,29 +67,38 @@ export async function runBash({ command, timeout = DEFAULT_TIMEOUT_MS }, workspa
             stderrTruncated ||= collected.truncated;
         });
 
-        child.on("error", reject);
-
-        const timer = setTimeout(() => {
-            timedOut = true;
+        function killGroup() {
+            if (closed || !child.pid) return;
             try {
                 process.kill(-child.pid, "SIGKILL");
             } catch {
                 child.kill("SIGKILL");
             }
-        }, timeout);
+        }
+        function cancel() { cancelled = true; killGroup(); }
+        function cleanup() {
+            clearTimeout(timer);
+            abortSignal?.removeEventListener("abort", cancel);
+        }
+        const timer = setTimeout(() => { timedOut = true; killGroup(); }, timeout);
+        abortSignal?.addEventListener("abort", cancel, { once: true });
+        if (abortSignal?.aborted) cancel();
+        child.on("error", (error) => { cleanup(); reject(error); });
 
         child.on("close", (exitCode, signal) => {
-            clearTimeout(timer);
+            closed = true;
+            cleanup();
             resolve({
                 cwd,
                 exitCode,
                 signal,
                 timedOut,
+                cancelled,
                 stdout,
                 stderr,
                 stdoutTruncated,
                 stderrTruncated,
-                note: timedOut
+                note: cancelled ? "已请求取消并等待命令进程关闭；已发生的副作用不会回滚" : timedOut
                     ? `命令运行超过 ${timeout}ms，已终止`
                     : exitCode === 0 ? "命令执行成功" : `命令以退出码 ${exitCode} 结束`,
             });

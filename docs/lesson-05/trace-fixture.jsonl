@@ -1,0 +1,70 @@
+{"event":"scenario_start","scenario":"steering","provider":"fixture","inputSource":"scripted","timestamp":"2026-09-07T08:37:04.673Z"}
+{"event":"input","text":"先用 read 读取 src/math.js，然后把 add 函数中的 return a - b; 用 edit 改为 return a + b;。不读取其他文件，不运行命令。","source":"scripted"}
+{"type":"agent_start","sequence":1}
+{"kind":"prompt","content":"先用 read 读取 src/math.js，然后把 add 函数中的 return a - b; 用 edit 改为 return a + b;。不读取其他文件，不运行命令。","type":"message","sequence":2}
+{"turn":1,"type":"turn_start","sequence":3}
+{"event":"model_request","scenario":"steering","request":1,"itemCount":1,"model":"fixture"}
+{"type":"tool_start","call_id":"read-1","name":"read","args":{"path":"src/math.js"},"sequence":4}
+{"event":"demo_gate","reason":"真实 read 已读完，延迟返回 100ms 以注入消息"}
+{"event":"input","text":"/follow 完成解释后，再补充一句测试建议，不调用任何工具。","source":"scripted"}
+{"kind":"follow_up","content":"完成解释后，再补充一句测试建议，不调用任何工具。","type":"queued","sequence":5}
+{"event":"input","text":"/steer 先别修改，只解释 src/math.js 中加法写成减法的问题，不调用 edit、write 或 bash。","source":"scripted"}
+{"kind":"steer","content":"先别修改，只解释 src/math.js 中加法写成减法的问题，不调用 edit、write 或 bash。","type":"queued","sequence":6}
+{"type":"tool_end","call_id":"read-1","name":"read","result":{"path":"src/math.js","offset":1,"lineCount":3,"totalLines":3,"content":"1: export function add(a, b) {\n2:     return a - b;\n3: }","truncated":false,"nextOffset":null,"note":"已读到文件末尾"},"durationMs":103.209,"sequence":7}
+{"type":"tool_skipped","call_id":"edit-1","name":"edit","result":{"error":{"code":"STEERING_SKIPPED","message":"调用未启动"}},"durationMs":0.031375000000025466,"sequence":8}
+{"turn":1,"status":"completed","type":"turn_end","sequence":9}
+{"kind":"steer","content":"先别修改，只解释 src/math.js 中加法写成减法的问题，不调用 edit、write 或 bash。","type":"message","sequence":10}
+{"turn":2,"type":"turn_start","sequence":11}
+{"event":"model_request","scenario":"steering","request":2,"itemCount":7,"model":"fixture"}
+{"text":"加法写成了减法；按插话要求只解释，不修改。","type":"answer","sequence":12}
+{"turn":2,"status":"completed","type":"turn_end","sequence":13}
+{"kind":"follow_up","content":"完成解释后，再补充一句测试建议，不调用任何工具。","type":"message","sequence":14}
+{"turn":3,"type":"turn_start","sequence":15}
+{"event":"model_request","scenario":"steering","request":3,"itemCount":9,"model":"fixture"}
+{"text":"测试建议：验证 add(2, 3) 等于 5。","type":"answer","sequence":16}
+{"turn":3,"status":"completed","type":"turn_end","sequence":17}
+{"status":"completed","turns":3,"discarded":{"steering":0,"followUps":0},"type":"agent_end","sequence":18}
+{"event":"verification","scenario":"steering","passed":true,"filesUnchanged":true,"pendingApprovals":0,"status":"completed","turns":3}
+{"event":"scenario_start","scenario":"approval-cancel","provider":"fixture","inputSource":"scripted","timestamp":"2026-09-07T08:37:04.794Z"}
+{"event":"input","text":"只调用 write 创建 cancelled.txt，内容为 must not exist。如果未批准就停止。","source":"scripted"}
+{"type":"agent_start","sequence":1}
+{"kind":"prompt","content":"只调用 write 创建 cancelled.txt，内容为 must not exist。如果未批准就停止。","type":"message","sequence":2}
+{"turn":1,"type":"turn_start","sequence":3}
+{"event":"model_request","scenario":"approval-cancel","request":1,"itemCount":1,"model":"fixture"}
+{"event":"terminal","text":"审批 a1 call_id=\"write-1\" write {\"path\":\"cancelled.txt\",\"content\":\"must not exist\"}"}
+{"event":"terminal","text":"输入 /approve a1 y 或 /approve a1 n"}
+{"event":"input","text":"/cancel","source":"scripted"}
+{"event":"terminal","text":"审批 a1：未执行 任务已取消"}
+{"type":"cancel_requested","sequence":4}
+{"type":"tool_skipped","call_id":"write-1","name":"write","result":{"error":{"code":"CANCELLED","message":"调用未启动"}},"durationMs":0.7115420000000086,"sequence":5}
+{"turn":1,"status":"cancelled","type":"turn_end","sequence":6}
+{"status":"cancelled","turns":1,"discarded":{"steering":0,"followUps":0},"error":"This operation was aborted","type":"agent_end","sequence":7}
+{"event":"verification","scenario":"approval-cancel","passed":true,"filesUnchanged":true,"pendingApprovals":0,"status":"cancelled","turns":1}
+{"event":"scenario_start","scenario":"bash-cancel","provider":"fixture","inputSource":"scripted","timestamp":"2026-09-07T08:37:04.806Z"}
+{"event":"input","text":"仅用 bash 运行以下命令，不改写命令，不增加其他操作：printf 'ready:%s\\n' \"$$\"; sleep 30","source":"scripted"}
+{"type":"agent_start","sequence":1}
+{"kind":"prompt","content":"仅用 bash 运行以下命令，不改写命令，不增加其他操作：printf 'ready:%s\\n' \"$$\"; sleep 30","type":"message","sequence":2}
+{"turn":1,"type":"turn_start","sequence":3}
+{"event":"model_request","scenario":"bash-cancel","request":1,"itemCount":1,"model":"fixture"}
+{"event":"terminal","text":"审批 a1 call_id=\"bash-1\" bash {\"command\":\"printf 'ready:%s\\\\n' \\\"$$\\\"; sleep 30\"}"}
+{"event":"terminal","text":"输入 /approve a1 y 或 /approve a1 n"}
+{"event":"input","text":"/approve a1 y","source":"scripted"}
+{"event":"terminal","text":"审批 a1：允许 "}
+{"type":"tool_start","call_id":"bash-1","name":"bash","args":{"command":"printf 'ready:%s\\n' \"$$\"; sleep 30"},"sequence":4}
+{"event":"input","text":"/cancel","source":"scripted"}
+{"type":"cancel_requested","sequence":5}
+{"type":"tool_end","call_id":"bash-1","name":"bash","result":{"cwd":"<workspace>","exitCode":null,"signal":"SIGKILL","timedOut":false,"cancelled":true,"stdout":"ready:69788\n","stderr":"","stdoutTruncated":false,"stderrTruncated":false,"note":"已请求取消并等待命令进程关闭；已发生的副作用不会回滚"},"durationMs":254.869084,"sequence":6}
+{"turn":1,"status":"cancelled","type":"turn_end","sequence":7}
+{"status":"cancelled","turns":1,"discarded":{"steering":0,"followUps":0},"error":"This operation was aborted","type":"agent_end","sequence":8}
+{"event":"verification","scenario":"bash-cancel","passed":true,"filesUnchanged":true,"pendingApprovals":0,"status":"cancelled","turns":1}
+{"event":"scenario_start","scenario":"model-cancel","provider":"fixture","inputSource":"scripted","timestamp":"2026-09-07T08:37:05.073Z"}
+{"event":"input","text":"请解释事件循环中的微任务调度，不调用工具。","source":"scripted"}
+{"type":"agent_start","sequence":1}
+{"kind":"prompt","content":"请解释事件循环中的微任务调度，不调用工具。","type":"message","sequence":2}
+{"turn":1,"type":"turn_start","sequence":3}
+{"event":"model_request","scenario":"model-cancel","request":1,"itemCount":1,"model":"fixture"}
+{"event":"input","text":"/cancel","source":"scripted"}
+{"type":"cancel_requested","sequence":4}
+{"turn":1,"status":"cancelled","type":"turn_end","sequence":5}
+{"status":"cancelled","turns":1,"discarded":{"steering":0,"followUps":0},"error":"The operation was aborted","type":"agent_end","sequence":6}
+{"event":"verification","scenario":"model-cancel","passed":true,"filesUnchanged":true,"pendingApprovals":0,"status":"cancelled","turns":1}

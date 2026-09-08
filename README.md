@@ -8,6 +8,8 @@
 
 [阅读第五篇正式文章](https://mp.weixin.qq.com/s/UTwpxPMDwDGYKz2U7rdKDA)。
 
+第六篇（lesson-05）的独立提交见 [双层循环、交互输入与演示证据](docs/lesson-05/README.md)。入口为 `node src/interactive.js workspace/demo-project`，已接入 DeepSeek、插话/追加、审批分发与取消；尚未发布 Tag。`npm start` 仍保留 lesson-04 CLI。
+
 ## 运行项目
 
 ```bash
