@@ -1,6 +1,6 @@
 # Lesson 05：把第三篇的双层循环接起来
 
-对应系列第六篇。发布基线为 `lesson-04-tool-runtime`（`d58d856`）；本课在 `codex/lesson-05-interaction` 单独提交保存，尚未推送或创建发布 Tag。后续课程必须从本课提交之后继续，不混入本课基线。
+对应系列第六篇。发布基线为 `lesson-04-tool-runtime`（`d58d856`）；本课在 `codex/lesson-05-interaction` 单独提交保存，2026-10-16 补打发布 Tag `lesson-05-interaction`。后续课程必须从本课提交之后继续，不混入本课基线。
 
 第三篇已经介绍 Steer / Queue / Interrupt 和双层循环图。本课落实消息的接收、消费检查点和取消链路，不重新发明术语。Steering 对应纠偏，Follow-up 是 Queue 行为中等待处理的后续消息，`abort()` 发起 Interrupt。
 

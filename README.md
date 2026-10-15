@@ -4,11 +4,13 @@
 
 课程正文、蓝图与网站开发位于 [`fxjzai/build-agents-from-scratch`](https://github.com/fxjzai/build-agents-from-scratch)，本仓库只保存可运行代码和每一课对应的 Git Tag。
 
-当前发布节点：**第 4 课（系列第五篇）——Tool Registry、参数校验、执行策略和审批 Hook**，对应 `lesson-04-tool-runtime`。
+当前发布节点：**第 6 课（系列第七篇）——流式事件、结构化控制与简单终端**，对应 `lesson-06-streaming`。
 
 [阅读第五篇正式文章](https://mp.weixin.qq.com/s/UTwpxPMDwDGYKz2U7rdKDA)。
 
-第六篇（lesson-05）的独立提交见 [双层循环、交互输入与演示证据](docs/lesson-05/README.md)。入口为 `node src/interactive.js workspace/demo-project`，已接入 DeepSeek、插话/追加、审批分发与取消；尚未发布 Tag。`npm start` 仍保留 lesson-04 CLI。
+第六篇（lesson-05）的独立提交见 [双层循环、交互输入与演示证据](docs/lesson-05/README.md)。入口为 `node src/interactive.js workspace/demo-project`，已接入 DeepSeek、插话/追加、审批分发与取消；对应 `lesson-05-interaction`。`npm start` 仍保留 lesson-04 CLI。
+
+第七篇（lesson-06）从第六篇提交 `d87a34b` 继续，见 [流式事件、结构化控制与简单终端](docs/lesson-06/README.md)。Node.js ≥22.19.0，运行 `npm run start:06 -- workspace/demo-project`；程序对接用 `node src/streaming.js --jsonl workspace/demo-project`。新入口使用 Pi TUI 0.85.1，模型仍为 DeepSeek，Agent 循环仍为本仓库实现。固定演示 `npm run demo:06` 不联网；`npm run demo:06 -- --live` 使用真实模型。对应 `lesson-06-streaming`。
 
 ## 运行项目
 
@@ -37,6 +39,8 @@ npm start -- workspace/demo-project
 | `lesson-02-agent-loop` | 增加内层工具循环、并行调用和停止条件 |
 | `lesson-03-coding-tools` | `read/write/edit/bash` 四工具与工作区路径约束 |
 | `lesson-04-tool-runtime` | 工具注册、参数校验、串并行策略、Hook 与逐次审批 |
+| `lesson-05-interaction` | 双层循环：Steering、Follow-up、取消与审批分发 |
+| `lesson-06-streaming` | 流式事件、结构化 JSONL 控制与 Pi TUI 简单终端 |
 
 第 4 课的逐步代码说明、测试结果与演示见 [lesson-04 教程](docs/lesson-04/README.md)。
 

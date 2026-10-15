@@ -1,0 +1,57 @@
+{"type":"scenario_start","scenario":"stream","provider":"fixture","inputSource":"scripted","timestamp":"2026-09-08T03:08:30.430Z"}
+{"type":"scripted_input","command":{"type":"prompt","content":"先 read src/math.js，再用三句话解释加法写成减法的问题。不修改，不调用 bash。"}}
+{"type":"agent_start","runId":"21a06532-c42c-401f-9469-e8d2bf800227","turn":0,"sequence":1}
+{"kind":"prompt","content":"先 read src/math.js，再用三句话解释加法写成减法的问题。不修改，不调用 bash。","type":"message","runId":"21a06532-c42c-401f-9469-e8d2bf800227","turn":0,"sequence":2}
+{"type":"turn_start","runId":"21a06532-c42c-401f-9469-e8d2bf800227","turn":1,"sequence":3}
+{"type":"tool_start","call_id":"r1","name":"read","args":{"path":"src/math.js"},"callId":"r1","runId":"21a06532-c42c-401f-9469-e8d2bf800227","turn":1,"sequence":4}
+{"type":"tool_end","call_id":"r1","name":"read","result":{"path":"src/math.js","offset":1,"lineCount":3,"totalLines":3,"content":"1: export function add(a, b) {\n2:     return a - b;\n3: }","truncated":false,"nextOffset":null,"note":"已读到文件末尾"},"durationMs":0.8845840000000038,"callId":"r1","runId":"21a06532-c42c-401f-9469-e8d2bf800227","turn":1,"sequence":5}
+{"turn":1,"status":"completed","type":"turn_end","runId":"21a06532-c42c-401f-9469-e8d2bf800227","sequence":6}
+{"type":"turn_start","runId":"21a06532-c42c-401f-9469-e8d2bf800227","turn":2,"sequence":7}
+{"type":"message_start","messageId":"21a06532-c42c-401f-9469-e8d2bf800227:2:0","role":"assistant","runId":"21a06532-c42c-401f-9469-e8d2bf800227","turn":2,"sequence":8}
+{"type":"text_delta","messageId":"21a06532-c42c-401f-9469-e8d2bf800227:2:0","partIndex":0,"delta":"函数名表示","runId":"21a06532-c42c-401f-9469-e8d2bf800227","turn":2,"sequence":9}
+{"type":"text_delta","messageId":"21a06532-c42c-401f-9469-e8d2bf800227:2:0","partIndex":0,"delta":"加法，但实现执行了减法。先解释，不修改。","runId":"21a06532-c42c-401f-9469-e8d2bf800227","turn":2,"sequence":10}
+{"type":"message_end","messageId":"21a06532-c42c-401f-9469-e8d2bf800227:2:0","status":"completed","text":"函数名表示加法，但实现执行了减法。先解释，不修改。","runId":"21a06532-c42c-401f-9469-e8d2bf800227","turn":2,"sequence":11}
+{"turn":2,"status":"completed","type":"turn_end","runId":"21a06532-c42c-401f-9469-e8d2bf800227","sequence":12}
+{"status":"completed","turns":2,"discarded":{"steering":0,"followUps":0},"type":"agent_end","runId":"21a06532-c42c-401f-9469-e8d2bf800227","turn":2,"sequence":13}
+{"type":"verification","scenario":"stream","status":"completed","turns":2,"filesUnchanged":true,"textDeltas":2,"viewMatchesJsonl":true}
+{"type":"scenario_start","scenario":"approval-steer","provider":"fixture","inputSource":"scripted","timestamp":"2026-09-08T03:08:30.441Z"}
+{"type":"scripted_input","command":{"type":"prompt","content":"先 read src/math.js，再 edit 把 return a - b; 改为 return a + b;，不要运行命令。"}}
+{"type":"agent_start","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":0,"sequence":1}
+{"kind":"prompt","content":"先 read src/math.js，再 edit 把 return a - b; 改为 return a + b;，不要运行命令。","type":"message","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":0,"sequence":2}
+{"type":"turn_start","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":1,"sequence":3}
+{"type":"tool_start","call_id":"r1","name":"read","args":{"path":"src/math.js"},"callId":"r1","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":1,"sequence":4}
+{"type":"tool_end","call_id":"r1","name":"read","result":{"path":"src/math.js","offset":1,"lineCount":3,"totalLines":3,"content":"1: export function add(a, b) {\n2:     return a - b;\n3: }","truncated":false,"nextOffset":null,"note":"已读到文件末尾"},"durationMs":0.7255420000000044,"callId":"r1","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":1,"sequence":5}
+{"type":"approval_requested","approvalId":"a1","callId":"e1","name":"edit","args":{"path":"src/math.js","oldText":"return a - b;","newText":"return a + b;"},"runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":1,"sequence":6}
+{"kind":"follow_up","content":"完成后仅补一句测试建议，不调用任何工具。","type":"queued","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":1,"sequence":7}
+{"type":"approval_resolved","approvalId":"a1","callId":"e1","outcome":"invalidated","reason":"用户已插话，请重新判断","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":1,"sequence":8}
+{"kind":"steer","content":"先别修改，只解释加法写成减法的问题，一句话，不调用任何工具。","type":"queued","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":1,"sequence":9}
+{"type":"tool_skipped","call_id":"e1","name":"edit","result":{"error":{"code":"STEERING_SKIPPED","message":"调用未启动"}},"durationMs":0.44674999999999443,"callId":"e1","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":1,"sequence":10}
+{"turn":1,"status":"completed","type":"turn_end","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","sequence":11}
+{"kind":"steer","content":"先别修改，只解释加法写成减法的问题，一句话，不调用任何工具。","type":"message","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":1,"sequence":12}
+{"type":"turn_start","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":2,"sequence":13}
+{"type":"message_start","messageId":"19be55d5-6843-4875-b7f0-0f51b671b101:2:0","role":"assistant","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":2,"sequence":14}
+{"type":"text_delta","messageId":"19be55d5-6843-4875-b7f0-0f51b671b101:2:0","partIndex":0,"delta":"函数名表示","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":2,"sequence":15}
+{"type":"text_delta","messageId":"19be55d5-6843-4875-b7f0-0f51b671b101:2:0","partIndex":0,"delta":"加法，但实现执行了减法。先解释，不修改。","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":2,"sequence":16}
+{"type":"message_end","messageId":"19be55d5-6843-4875-b7f0-0f51b671b101:2:0","status":"completed","text":"函数名表示加法，但实现执行了减法。先解释，不修改。","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":2,"sequence":17}
+{"turn":2,"status":"completed","type":"turn_end","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","sequence":18}
+{"kind":"follow_up","content":"完成后仅补一句测试建议，不调用任何工具。","type":"message","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":2,"sequence":19}
+{"type":"turn_start","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":3,"sequence":20}
+{"type":"message_start","messageId":"19be55d5-6843-4875-b7f0-0f51b671b101:3:0","role":"assistant","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":3,"sequence":21}
+{"type":"text_delta","messageId":"19be55d5-6843-4875-b7f0-0f51b671b101:3:0","partIndex":0,"delta":"建议验证 ","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":3,"sequence":22}
+{"type":"text_delta","messageId":"19be55d5-6843-4875-b7f0-0f51b671b101:3:0","partIndex":0,"delta":"add(1, 2) === 3。","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":3,"sequence":23}
+{"type":"message_end","messageId":"19be55d5-6843-4875-b7f0-0f51b671b101:3:0","status":"completed","text":"建议验证 add(1, 2) === 3。","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":3,"sequence":24}
+{"turn":3,"status":"completed","type":"turn_end","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","sequence":25}
+{"status":"completed","turns":3,"discarded":{"steering":0,"followUps":0},"type":"agent_end","runId":"19be55d5-6843-4875-b7f0-0f51b671b101","turn":3,"sequence":26}
+{"type":"verification","scenario":"approval-steer","status":"completed","turns":3,"filesUnchanged":true,"textDeltas":4,"viewMatchesJsonl":true}
+{"type":"scenario_start","scenario":"cancel-stream","provider":"fixture","inputSource":"scripted","timestamp":"2026-09-08T03:08:30.450Z"}
+{"type":"scripted_input","command":{"type":"prompt","content":"不调用任何工具。请用中文详细说明十种软件测试方法，每种至少两句话。"}}
+{"type":"agent_start","runId":"8ec4c570-35e2-4f33-a5cb-2de4970d0447","turn":0,"sequence":1}
+{"kind":"prompt","content":"不调用任何工具。请用中文详细说明十种软件测试方法，每种至少两句话。","type":"message","runId":"8ec4c570-35e2-4f33-a5cb-2de4970d0447","turn":0,"sequence":2}
+{"type":"turn_start","runId":"8ec4c570-35e2-4f33-a5cb-2de4970d0447","turn":1,"sequence":3}
+{"type":"message_start","messageId":"8ec4c570-35e2-4f33-a5cb-2de4970d0447:1:0","role":"assistant","runId":"8ec4c570-35e2-4f33-a5cb-2de4970d0447","turn":1,"sequence":4}
+{"type":"text_delta","messageId":"8ec4c570-35e2-4f33-a5cb-2de4970d0447:1:0","partIndex":0,"delta":"函数名表示","runId":"8ec4c570-35e2-4f33-a5cb-2de4970d0447","turn":1,"sequence":5}
+{"type":"cancel_requested","runId":"8ec4c570-35e2-4f33-a5cb-2de4970d0447","turn":1,"sequence":6}
+{"type":"message_end","messageId":"8ec4c570-35e2-4f33-a5cb-2de4970d0447:1:0","status":"cancelled","text":"函数名表示","runId":"8ec4c570-35e2-4f33-a5cb-2de4970d0447","turn":1,"sequence":7}
+{"turn":1,"status":"cancelled","type":"turn_end","runId":"8ec4c570-35e2-4f33-a5cb-2de4970d0447","sequence":8}
+{"status":"cancelled","turns":1,"discarded":{"steering":0,"followUps":0},"error":"This operation was aborted","type":"agent_end","runId":"8ec4c570-35e2-4f33-a5cb-2de4970d0447","turn":1,"sequence":9}
+{"type":"verification","scenario":"cancel-stream","status":"cancelled","turns":1,"filesUnchanged":true,"textDeltas":1,"viewMatchesJsonl":true}

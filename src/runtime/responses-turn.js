@@ -1,6 +1,9 @@
-// 保留供应商 Items，不把 reasoning 压成文本或 UI 事件。
-export function createResponsesTurn({ client, model, workspaceRoot, tools }) {
-    return async ({ input, signal }) => {
+import { parseResponsesOutput } from "./responses-output.js";
+import { consumeResponsesStream } from "./responses-stream.js";
+
+// 默认保留 lesson-05 非流式行为；新入口显式打开 stream。
+export function createResponsesTurn({ client, model, workspaceRoot, tools, stream = false }) {
+    return async ({ input, signal, onEvent }) => {
         const response = await client.responses.create({
             model,
             instructions: [
@@ -12,24 +15,8 @@ export function createResponsesTurn({ client, model, workspaceRoot, tools }) {
             ].join("\n"),
             tools,
             input,
+            ...(stream ? { stream: true } : {}),
         }, { signal });
-        if (response.status !== "completed") throw new Error(`模型响应未完成：${response.status ?? "缺少 status"}`);
-        if (!Array.isArray(response.output) || response.output.length === 0) throw new Error("模型响应缺少 output Items");
-        const output = structuredClone(response.output);
-        const calls = output.filter((item) => item.type === "function_call");
-        const priorIds = new Set(input.filter((item) => item.type === "function_call").map((item) => item.call_id));
-        for (const call of calls) {
-            if (typeof call.call_id !== "string" || !call.call_id || priorIds.has(call.call_id) ||
-                typeof call.name !== "string" || !call.name || typeof call.arguments !== "string") {
-                throw new Error("模型工具调用缺少有效字段或 call_id 重复");
-            }
-            priorIds.add(call.call_id);
-        }
-        if (output.some((item) => item.type === "custom_tool_call")) throw new Error("本课未注册 custom 工具");
-        const text = output.filter((item) => item.type === "message")
-            .flatMap((item) => item.content ?? []).filter((part) => part.type === "output_text")
-            .map((part) => part.text).join("");
-        if (!calls.length && !text) throw new Error("模型响应既无工具调用，也无回答文本");
-        return { output, calls, text };
+        return stream ? consumeResponsesStream(response, { input, signal, onEvent }) : parseResponsesOutput(response, input);
     };
 }
